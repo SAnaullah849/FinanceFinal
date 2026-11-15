@@ -1,0 +1,4 @@
+const fs=require('node:fs'),solc=require('solc');
+function compile(){const input={language:'Solidity',sources:{'CertificateRegistry.sol':{content:fs.readFileSync(require('node:path').join(__dirname,'../contracts/CertificateRegistry.sol'),'utf8')}},settings:{evmVersion:'shanghai',outputSelection:{'*':{'*':['abi','evm.bytecode.object']}}}};const output=JSON.parse(solc.compile(JSON.stringify(input)));const errors=(output.errors||[]).filter(e=>e.severity==='error');if(errors.length)throw Error(errors.map(e=>e.formattedMessage).join('\n'));return output.contracts['CertificateRegistry.sol'].CertificateRegistry;}
+module.exports=compile;
+if(require.main===module){fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/CertificateRegistry.json',JSON.stringify(compile(),null,2));console.log('Solidity compilation passed');}

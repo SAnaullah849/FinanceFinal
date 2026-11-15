@@ -1,0 +1,17 @@
+const {test,before,after}=require('node:test'),assert=require('node:assert/strict'),ganache=require('ganache'),{ethers}=require('ethers'),compile=require('../scripts/compile.cjs');
+let rpc,provider,issuer,buyer,other,c;
+before(async()=>{rpc=ganache.provider({logging:{quiet:true},chain:{chainId:1337},wallet:{totalAccounts:3}});provider=new ethers.BrowserProvider(rpc);[issuer,buyer,other]=await Promise.all([0,1,2].map(i=>provider.getSigner(i)));const a=compile();c=await new ethers.ContractFactory(a.abi,a.evm.bytecode.object,issuer).deploy();await c.waitForDeployment();});
+after(async()=>{await rpc.disconnect()});
+const hour=()=>Math.floor(Date.now()/3600000)*3600-3600;
+test('authorised issuer registers plant',async()=>{await(await c.registerPlant(1,'Elmsworth Wind Park','Germany',84)).wait();assert.equal((await c.plants(1)).capacity,84n)});
+test('unauthorised plant registration is rejected',async()=>{await assert.rejects(c.connect(buyer).registerPlant(2,'Fake','EU',1))});
+test('issuer creates hourly certificate',async()=>{await(await c.issueCertificates(1,hour(),28,await issuer.getAddress())).wait();assert.equal((await c.getCertificate(1)).mwh,28n)});
+test('unauthorised issuance is rejected',async()=>{await assert.rejects(c.connect(buyer).issueCertificates(1,hour()-3600,20,await buyer.getAddress()))});
+test('duplicate plant-hour is rejected',async()=>{await assert.rejects(c.issueCertificates(1,hour(),1,await issuer.getAddress()))});
+test('capacity excess and unknown plant are rejected',async()=>{await assert.rejects(c.issueCertificates(1,hour()-3600,85,await issuer.getAddress()));await assert.rejects(c.issueCertificates(99,hour(),1,await issuer.getAddress()))});
+test('non-hour timestamp and zero owner are rejected',async()=>{await assert.rejects(c.issueCertificates(1,hour()+1,1,await issuer.getAddress()));await assert.rejects(c.issueCertificates(1,hour()-3600,1,ethers.ZeroAddress))});
+test('non-owner cannot transfer or retire',async()=>{await assert.rejects(c.connect(other).transferCertificate(1,await buyer.getAddress()));await assert.rejects(c.connect(other).retireCertificate(1,'Fictional buyer','Demo'))});
+test('owner transfers and event preserves ownership trail',async()=>{await(await c.transferCertificate(1,await buyer.getAddress())).wait();assert.equal((await c.getCertificate(1)).owner,await buyer.getAddress());assert.equal((await c.queryFilter(c.filters.Transferred(1))).length,1)});
+test('previous owner loses transfer rights',async()=>{await assert.rejects(c.transferCertificate(1,await other.getAddress()))});
+test('new owner retires with claim details',async()=>{await(await c.connect(buyer).retireCertificate(1,'Alpenforge Industries','November demo electricity')).wait();assert.equal((await c.getCertificate(1)).retired,true)});
+test('retirement blocks transfer and duplicate retirement',async()=>{await assert.rejects(c.connect(buyer).transferCertificate(1,await other.getAddress()));await assert.rejects(c.connect(buyer).retireCertificate(1,'Alpenforge','Second claim'))});

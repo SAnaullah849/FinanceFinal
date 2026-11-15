@@ -1,0 +1,24 @@
+{
+  "name": "watttrail",
+  "version": "1.0.0",
+  "description": "Educational WattTrail EU certificate registry with local blockchain and web interface",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node scripts/server.cjs",
+    "compile": "node scripts/compile.cjs",
+    "test": "node --test --test-concurrency=1 test/*.test.cjs",
+    "build": "node scripts/build.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "ethers": "6.15.0",
+    "ganache": "7.9.2",
+    "solc": "0.8.30"
+  }
+}

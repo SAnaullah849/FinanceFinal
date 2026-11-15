@@ -1,0 +1,1 @@
+const fs=require('node:fs');fs.mkdirSync('dist',{recursive:true});for(const f of ['index.html','style.css','app.js'])fs.copyFileSync('web/'+f,'dist/'+f);console.log('Static browser simulation built in dist. Run npm start for blockchain mode.');
